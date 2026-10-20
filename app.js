@@ -3,7 +3,7 @@
   'use strict';
 
   const STORAGE_KEY = 'yarukoto-data-v1';
-  const WEEKDAYS = ['にち', 'げつ', 'か', 'すい', 'もく', 'きん', 'ど'];
+  const WEEKDAYS = ['日', '月', 'か', 'すい', 'もく', 'きん', 'ど'];
 
   // ===== データ =====
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -78,7 +78,7 @@
     const today = dateKey();
     const yest = new Date(); yest.setDate(yest.getDate() - 1);
     const prefix = key === today ? 'きょう ' : key === dateKey(yest) ? 'きのう ' : '';
-    return `${prefix}${d.getMonth() + 1}がつ${d.getDate()}にち(${WEEKDAYS[d.getDay()]})`;
+    return `${prefix}${d.getMonth() + 1}月${d.getDate()}日(${WEEKDAYS[d.getDay()]})`;
   }
 
   // ===== 計算 =====
@@ -277,7 +277,7 @@
     const monthPrefix = `${y}-${String(m + 1).padStart(2, '0')}-`;
     const monthKeys = Object.keys(byDate).filter((k) => k.startsWith(monthPrefix)).sort().reverse();
 
-    $('month-label').textContent = `${y}ねん ${m + 1}がつ`;
+    $('month-label').textContent = `${y}ねん ${m + 1}月`;
     $('points-month').textContent = sumPts(monthKeys.flatMap((k) => byDate[k]));
 
     // つぎの おこづかいの ひ
@@ -285,8 +285,8 @@
     $('allowance-next').hidden = !next;
     if (next) {
       $('allowance-next').textContent = next.inDays === 0
-        ? '💰 きょうは おこづかいの ひ!'
-        : `💰 つぎの おこづかいの ひ: ${next.date.getMonth() + 1}がつ${next.date.getDate()}にち(あと ${next.inDays}にち)`;
+        ? '💰 きょうは おこづかいの 日!'
+        : `💰 つぎの おこづかいの 日: ${next.date.getMonth() + 1}月${next.date.getDate()}日(あと ${next.inDays}日)`;
     }
 
     // カレンダー
@@ -306,7 +306,7 @@
       if (k > todayKey) cls.push('is-future');
       if (byDate[k]) cls.push('has-done');
       if (isAllowanceDay(d)) cls.push('is-allowance');
-      const label = `${m + 1}がつ${day}にち` + (byDate[k] ? ` ${pts}てん` : '') + (isAllowanceDay(d) ? ' おこづかいの ひ' : '');
+      const label = `${m + 1}月${day}日` + (byDate[k] ? ` ${pts}てん` : '') + (isAllowanceDay(d) ? ' おこづかいの 日' : '');
       const attrs = { class: cls.join(' '), 'aria-label': label };
       if (byDate[k]) {
         attrs.type = 'button';
@@ -324,8 +324,8 @@
     list.replaceChildren();
     if (monthKeys.length === 0) {
       const isFuture = new Date(y, m, 1) > now;
-      list.append(el('p', { class: 'empty', text: isThisMonth ? 'こんげつは まだ きろくが ないよ。やることを がんばろう!'
-        : isFuture ? 'この つきは これからだよ' : 'この つきは きろくが ないよ' }));
+      list.append(el('p', { class: 'empty', text: isThisMonth ? 'こん月は まだ きろくが ないよ。やることを がんばろう!'
+        : isFuture ? 'この 月は これからだよ' : 'この 月は きろくが ないよ' }));
       return;
     }
     monthKeys.forEach((k) => {
@@ -455,25 +455,25 @@
     };
 
     const typeSel = select(
-      [['none', 'きめない'], ['monthly', 'まいつき'], ['weekly', 'まいしゅう']],
-      a.type, 'おこづかいの ひの きめかた', (v) => setA({ type: v }),
+      [['none', 'きめない'], ['monthly', 'まい月'], ['weekly', 'まいしゅう']],
+      a.type, 'おこづかいの 日の きめかた', (v) => setA({ type: v }),
     );
     let detail = null;
     if (a.type === 'monthly') {
       const days = [];
-      for (let i = 1; i <= 31; i++) days.push([String(i), `${i}にち`]);
-      days.push(['last', 'さいごの ひ(つきまつ)']);
-      detail = select(days, a.day, 'なんにち', (v) => setA({ day: v === 'last' ? 'last' : Number(v) }));
+      for (let i = 1; i <= 31; i++) days.push([String(i), `${i}日`]);
+      days.push(['last', 'さいごの 日(月まつ)']);
+      detail = select(days, a.day, 'なん日', (v) => setA({ day: v === 'last' ? 'last' : Number(v) }));
     } else if (a.type === 'weekly') {
       detail = select(WEEKDAYS.map((w, i) => [String(i), `${w}ようび`]), a.weekday, 'なんようび', (v) => setA({ weekday: Number(v) }));
     }
 
     return el('div', { class: 'p-child', style: '--c:#e3b23c' },
-      el('h2', { text: '💰 おこづかいの ひ' }),
+      el('h2', { text: '💰 おこづかいの 日' }),
       el('p', { class: 'note', text: 'きめた ひは、こどもの「きろく」の カレンダーに 💰 が でます(ふたり きょうつう)。' }),
       el('div', { class: 'p-row' }, typeSel, detail),
       a.type === 'monthly' && a.day !== 'last' && Number(a.day) >= 29
-        ? el('p', { class: 'note', text: `${a.day}にちが ない つきは、その つきの さいごの ひ に なります。` })
+        ? el('p', { class: 'note', text: `${a.day}日が ない 月は、その 月の さいごの 日に なります。` })
         : null,
     );
   }
