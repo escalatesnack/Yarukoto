@@ -9,20 +9,55 @@
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
   function defaultData() {
-    const tasks = () => [
-      { id: uid(), emoji: '🧸', name: 'かたづけ', points: 1 },
-      { id: uid(), emoji: '📒', name: 'しゅくだい', points: 2 },
-      { id: uid(), emoji: '🎒', name: 'あしたの じゅんび', points: 1 },
-      { id: uid(), emoji: '🪥', name: 'はみがき', points: 1 },
-    ];
+    const own = () => [{ id: uid(), emoji: '📒', name: 'しゅくだい', points: 2 }];
     return {
+      // ふたり きょうつうの やること
+      commonTasks: [
+        { id: uid(), emoji: '🧸', name: 'かたづけ', points: 1 },
+        { id: uid(), emoji: '🪥', name: 'はみがき', points: 1 },
+        { id: uid(), emoji: '🎒', name: 'あしたの じゅんび', points: 1 },
+      ],
+      // tasks は その子だけの やること
       children: [
-        { id: uid(), name: 'おにいちゃん', emoji: '🦁', color: '#ff8a3d', tasks: tasks() },
-        { id: uid(), name: 'いもうと', emoji: '🐰', color: '#e86aa6', tasks: tasks() },
+        { id: uid(), name: 'おにいちゃん', emoji: '🦁', color: '#ff8a3d', tasks: own() },
+        { id: uid(), name: 'いもうと', emoji: '🐰', color: '#e86aa6', tasks: own() },
       ],
       // できたこと: { childId, taskId, name, emoji, points, date: 'YYYY-MM-DD', at: ISO文字列 }
       log: [],
     };
+  }
+
+  // まえの 形の データを いまの 形に そろえる
+  function normalize(d) {
+    if (!Array.isArray(d.commonTasks)) {
+      // きょうつうの やることが なかった ころの データ:
+      // ふたりとも 同じ え文字・名まえ・ポイント の やることは「きょうつう」に まとめる
+      // (ポイントが ちがう ものは、それぞれの 設定を のこすため その子だけの やることの まま)
+      d.commonTasks = [];
+      const [first, ...others] = d.children;
+      if (first && others.length) {
+        const same = (a, b) => a.name === b.name && a.emoji === b.emoji
+          && (Number(a.points) || 0) === (Number(b.points) || 0);
+        first.tasks.slice().forEach((t) => {
+          const matches = others.map((c) => c.tasks.find((x) => same(x, t)));
+          if (matches.some((m) => !m)) return;
+          d.commonTasks.push(t);
+          first.tasks = first.tasks.filter((x) => x !== t);
+          others.forEach((c, i) => {
+            const m = matches[i];
+            c.tasks = c.tasks.filter((x) => x !== m);
+            // その子の きろくも きょうつうの id に つけかえる(きょうの「できた」が きえないように)
+            d.log.forEach((l) => { if (l.childId === c.id && l.taskId === m.id) l.taskId = t.id; });
+          });
+        });
+      }
+    }
+    // おこづかいの 日: 1つだけ(day)だった ころの データは days に する
+    if (d.allowance && !Array.isArray(d.allowance.days)) {
+      d.allowance.days = d.allowance.day != null ? [d.allowance.day] : [25];
+      delete d.allowance.day;
+    }
+    return d;
   }
 
   // 保存されたデータを読む(なければ・読めなければ null)
@@ -31,7 +66,7 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const d = JSON.parse(raw);
-        if (d && Array.isArray(d.children) && Array.isArray(d.log)) return d;
+        if (d && Array.isArray(d.children) && Array.isArray(d.log)) return normalize(d);
       }
     } catch (e) {
       console.warn('データを読みこめませんでした', e);
@@ -85,6 +120,8 @@
   const childLog = (childId) => data.log.filter((l) => l.childId === childId);
   const sumPts = (list) => list.reduce((s, l) => s + (Number(l.points) || 0), 0);
   const findChild = (id) => data.children.find((c) => c.id === id);
+  // その子の やること ぜんぶ(きょうつう + その子だけ)
+  const tasksFor = (c) => [...(data.commonTasks || []), ...c.tasks];
 
   // ===== 画面切りかえ =====
   const $ = (id) => document.getElementById(id);
@@ -136,7 +173,7 @@
           el('span', { class: 'text' },
             el('span', { class: 'name', text: c.name }),
             el('br'),
-            el('span', { class: 'info', text: `きょう ${doneToday}/${c.tasks.length} できた ・ ${sumPts(log)}てん` }),
+            el('span', { class: 'info', text: `きょう ${doneToday}/${tasksFor(c).length} できた ・ ${sumPts(log)}てん` }),
           ),
         ),
       );
@@ -167,30 +204,39 @@
     $('points-today').textContent = sumPts(todayLog);
     $('points-total').textContent = sumPts(log);
 
-    const list = $('task-list');
-    list.replaceChildren();
-    if (c.tasks.length === 0) {
-      list.append(el('p', { class: 'empty', text: 'やることが まだ ないよ。おうちの人に 入れてもらおう!' }));
-    }
-    c.tasks.forEach((t) => {
+    const taskBtn = (t) => {
       const done = todayLog.some((l) => l.taskId === t.id);
-      list.append(
-        el('button', {
-          class: 'task' + (done ? ' is-done' : ''),
-          type: 'button',
-          'aria-pressed': String(done),
-          onclick: () => toggleTask(c.id, t.id),
-        },
-          el('span', { class: 't-emoji', text: t.emoji }),
-          el('span', { class: 't-body' },
-            el('span', { class: 't-name', text: t.name }),
-            el('span', { class: 't-pt', text: done ? 'できた!' : `${t.points}てん` }),
-          ),
-          el('span', { class: 't-check', text: '✓' }),
+      return el('button', {
+        class: 'task' + (done ? ' is-done' : ''),
+        type: 'button',
+        'aria-pressed': String(done),
+        onclick: () => toggleTask(c.id, t.id),
+      },
+        el('span', { class: 't-emoji', text: t.emoji }),
+        el('span', { class: 't-body' },
+          el('span', { class: 't-name', text: t.name }),
+          el('span', { class: 't-pt', text: done ? 'できた!' : `${t.points}てん` }),
         ),
+        el('span', { class: 't-check', text: '✓' }),
       );
-    });
-    $('all-done').hidden = !(c.tasks.length > 0 && c.tasks.every((t) => todayLog.some((l) => l.taskId === t.id)));
+    };
+    const group = (title, tasks, mine) => [
+      el('div', { class: 'group-title' + (mine ? ' mine' : '') },
+        el('span', { class: 'pill', text: title }), el('span', { class: 'line' })),
+      el('div', { class: 'task-list' }, tasks.map(taskBtn)),
+    ];
+
+    // 「ふたりの やること」と「その子の やること」に わけて ならべる
+    const box = $('task-groups');
+    box.replaceChildren();
+    const common = data.commonTasks || [];
+    if (common.length) box.append(...group('👫 ふたりの やること', common, false));
+    if (c.tasks.length) box.append(...group(`${c.emoji} ${c.name}の やること`, c.tasks, true));
+    const all = tasksFor(c);
+    if (all.length === 0) {
+      box.append(el('p', { class: 'empty', text: 'やることが まだ ないよ。おうちの人に 入れてもらおう!' }));
+    }
+    $('all-done').hidden = !(all.length > 0 && all.every((t) => todayLog.some((l) => l.taskId === t.id)));
 
     renderHistory(c);
   }
@@ -199,7 +245,8 @@
   function toggleTask(childId, taskId) {
     const today = dateKey();
     if (storageOk) data = loadStored() || data;
-    const t = findChild(childId)?.tasks.find((x) => x.id === taskId);
+    const child = findChild(childId);
+    const t = child && tasksFor(child).find((x) => x.id === taskId);
     if (!t) return renderChild();
     const isMine = (l) => l.childId === childId && l.taskId === taskId && l.date === today;
     const done = data.log.some(isMine);
@@ -239,17 +286,16 @@
   }
 
   // ===== おこづかいの ひ =====
-  // allowance: { type: 'none' | 'monthly' | 'weekly', day: 1〜28 か 'last'(月の さいごの日), weekday: 0〜6 }
-  const allowance = () => ({ type: 'none', day: 25, weekday: 6, ...(data.allowance || {}) });
+  // allowance: { type: 'none' | 'monthly' | 'weekly', days: [1〜31 か 'last'(月の さいごの日)…], weekday: 0〜6 }
+  const allowance = () => ({ type: 'none', days: [25], weekday: 6, ...(data.allowance || {}) });
 
   function isAllowanceDay(d) {
     const a = allowance();
     if (a.type === 'weekly') return d.getDay() === Number(a.weekday);
     if (a.type === 'monthly') {
-      // その日が ない つき(2がつ30にち など)は、その つきの さいごの ひ にする
+      // その日が ない 月(2月30日 など)は、その 月の さいごの 日に する
       const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-      const target = a.day === 'last' ? lastDay : Math.min(Number(a.day), lastDay);
-      return d.getDate() === target;
+      return a.days.some((v) => (v === 'last' ? lastDay : Math.min(Number(v), lastDay)) === d.getDate());
     }
     return false;
   }
@@ -380,51 +426,101 @@
   function editChild(childId, fn) {
     update((d) => { const c = d.children.find((x) => x.id === childId); if (c) fn(c); });
   }
-  function editTask(childId, taskId, fn) {
-    editChild(childId, (c) => { const t = c.tasks.find((x) => x.id === taskId); if (t) fn(t, c); });
+  // やることの リストは listKey で えらぶ: 'common'(ふたり きょうつう)か 子どもの id(その子だけ)
+  function taskListOf(d, listKey) {
+    if (listKey === 'common') return d.commonTasks;
+    return d.children.find((x) => x.id === listKey)?.tasks || null;
+  }
+  function editList(listKey, fn) {
+    update((d) => { const list = taskListOf(d, listKey); if (list) fn(list); });
+  }
+  function editTask(listKey, taskId, fn) {
+    editList(listKey, (list) => { const t = list.find((x) => x.id === taskId); if (t) fn(t); });
+  }
+  function moveTask(listKey, taskId, dir) {
+    editList(listKey, (list) => {
+      const i = list.findIndex((t) => t.id === taskId);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= list.length) return;
+      [list[i], list[j]] = [list[j], list[i]];
+    });
+    renderParent();
+  }
+
+  // やることの 一らん(へんしゅう できる 行)+ ふやす ボタン
+  function taskEditor(listKey, tasks, addLabel) {
+    const box = el('div', { class: 'p-tasks' });
+    tasks.forEach((t, ti) => {
+      box.append(el('div', { class: 'p-task' },
+        el('input', { class: 'inp inp-emoji', value: t.emoji, 'aria-label': 'え文字', onchange: (e) => {
+          const v = e.target.value.trim() || '⭐';
+          editTask(listKey, t.id, (x) => { x.emoji = v; });
+        } }),
+        el('input', { class: 'inp inp-name', value: t.name, 'aria-label': 'やることの 名まえ', onchange: (e) => {
+          const v = e.target.value.trim() || 'やること';
+          editTask(listKey, t.id, (x) => { x.name = v; });
+        } }),
+        el('input', { class: 'inp inp-pt', type: 'number', min: '0', max: '99', inputmode: 'numeric', value: t.points, 'aria-label': 'ポイント', onchange: (e) => {
+          const v = Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0));
+          e.target.value = v;
+          editTask(listKey, t.id, (x) => { x.points = v; });
+        } }),
+        el('span', { class: 'pt-unit', text: 'てん' }),
+        moveBtn('▲', ti === 0, () => moveTask(listKey, t.id, -1)),
+        moveBtn('▼', ti === tasks.length - 1, () => moveTask(listKey, t.id, 1)),
+        el('button', { class: 'small-btn del', type: 'button', 'aria-label': 'けす', text: '🗑', onclick: () => {
+          if (!confirm(`「${t.name}」を けしますか?(これまでの きろくは のこります)`)) return;
+          editList(listKey, (list) => {
+            const i = list.findIndex((y) => y.id === t.id);
+            if (i >= 0) list.splice(i, 1);
+          });
+          renderParent();
+        } }),
+      ));
+    });
+    return [
+      box,
+      el('button', { class: 'btn btn-add', type: 'button', text: addLabel, onclick: () => {
+        editList(listKey, (list) => { list.push({ id: uid(), emoji: '⭐', name: 'あたらしい やること', points: 1 }); });
+        renderParent();
+      } }),
+    ];
   }
 
   function renderParent() {
     const box = $('parent-settings');
     box.replaceChildren();
-    data.children.forEach((c, ci) => {
-      const tasksBox = el('div', { class: 'p-tasks' });
-      c.tasks.forEach((t, ti) => {
-        tasksBox.append(el('div', { class: 'p-task' },
-          el('input', { class: 'inp inp-emoji', value: t.emoji, 'aria-label': 'え文字', onchange: (e) => {
-            const v = e.target.value.trim() || '⭐';
-            editTask(c.id, t.id, (x) => { x.emoji = v; });
-          } }),
-          el('input', { class: 'inp inp-name', value: t.name, 'aria-label': 'やることの 名まえ', onchange: (e) => {
-            const v = e.target.value.trim() || 'やること';
-            editTask(c.id, t.id, (x) => { x.name = v; });
-          } }),
-          el('input', { class: 'inp inp-pt', type: 'number', min: '0', max: '99', inputmode: 'numeric', value: t.points, 'aria-label': 'ポイント', onchange: (e) => {
-            const v = Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0));
-            e.target.value = v;
-            editTask(c.id, t.id, (x) => { x.points = v; });
-          } }),
-          el('span', { class: 'pt-unit', text: 'てん' }),
-          moveBtn('▲', ti === 0, () => moveTask(c.id, t.id, -1)),
-          moveBtn('▼', ti === c.tasks.length - 1, () => moveTask(c.id, t.id, 1)),
-          el('button', { class: 'small-btn del', type: 'button', 'aria-label': 'けす', text: '🗑', onclick: () => {
-            if (!confirm(`「${t.name}」を けしますか?(これまでの きろくは のこります)`)) return;
-            editChild(c.id, (x) => { x.tasks = x.tasks.filter((y) => y.id !== t.id); });
-            renderParent();
-          } }),
-        ));
-      });
 
+    // ふたり きょうつうの やること
+    box.append(el('div', { class: 'p-child', style: '--c:#7bbf5a' },
+      el('h2', { text: '👫 ふたり きょうつうの やること' }),
+      el('p', { class: 'note', text: 'ここに 入れた やることは、ふたりとも の 画面に 出ます。「できた」は それぞれ べつに つきます。' }),
+      taskEditor('common', data.commonTasks, '+ きょうつうの やることを ふやす'),
+    ));
+
+    // 子どもごと(名まえ・いろ・その子だけの やること)
+    data.children.forEach((c, ci) => {
+      const ownTitle = el('h4', { text: `${c.emoji} ${c.name}だけの やること` });
+      const [ownList, ownAdd] = taskEditor(c.id, c.tasks, `+ ${c.name}だけの やることを ふやす`);
+      // 名まえ・え文字を かえたら 見出しも かえる(画面ぜんぶは かきなおさない)
+      const relabel = () => {
+        const now = findChild(c.id);
+        if (!now) return;
+        ownTitle.textContent = `${now.emoji} ${now.name}だけの やること`;
+        ownAdd.textContent = `+ ${now.name}だけの やることを ふやす`;
+      };
       box.append(el('div', { class: 'p-child', style: `--c:${c.color}` },
         el('h2', { text: `${ci + 1}人め` }),
         el('div', { class: 'p-row' },
           el('input', { class: 'inp inp-emoji', value: c.emoji, 'aria-label': 'え文字', onchange: (e) => {
             const v = e.target.value.trim() || '🙂';
             editChild(c.id, (x) => { x.emoji = v; });
+            relabel();
           } }),
           el('input', { class: 'inp inp-name', value: c.name, 'aria-label': '名まえ', onchange: (e) => {
             const v = e.target.value.trim() || `${ci + 1}人め`;
             editChild(c.id, (x) => { x.name = v; });
+            relabel();
           } }),
           el('input', { class: 'inp-color', type: 'color', value: c.color, 'aria-label': 'いろ', onchange: (e) => {
             const v = e.target.value;
@@ -432,18 +528,13 @@
             renderParent();
           } }),
         ),
-        el('p', { class: 'note', text: 'やること(え文字・名まえ・ポイント)' }),
-        tasksBox,
-        el('button', { class: 'btn btn-add', type: 'button', text: '+ やることを ふやす', onclick: () => {
-          editChild(c.id, (x) => { x.tasks.push({ id: uid(), emoji: '⭐', name: 'あたらしい やること', points: 1 }); });
-          renderParent();
-        } }),
+        ownTitle, ownList, ownAdd,
       ));
     });
     box.append(allowanceSettings());
   }
 
-  // おこづかいの ひ の 設定(ふたり きょうつう)
+  // おこづかいの 日 の 設定(ふたり きょうつう)
   function allowanceSettings() {
     const a = allowance();
     const setA = (patch) => { update((d) => { d.allowance = { ...allowance(), ...patch }; }); renderParent(); };
@@ -458,38 +549,46 @@
       [['none', 'きめない'], ['monthly', 'まい月'], ['weekly', 'まいしゅう']],
       a.type, 'おこづかいの 日の きめかた', (v) => setA({ type: v }),
     );
+
     let detail = null;
     if (a.type === 'monthly') {
-      const days = [];
-      for (let i = 1; i <= 31; i++) days.push([String(i), `${i}日`]);
-      days.push(['last', 'さいごの 日(月まつ)']);
-      detail = select(days, a.day, 'なん日', (v) => setA({ day: v === 'last' ? 'last' : Number(v) }));
+      // 日にちボタン: おすと えらぶ/はずす(いくつでも)
+      const toggleDay = (v) => setA({ days: a.days.includes(v) ? a.days.filter((x) => x !== v) : [...a.days, v] });
+      const chip = (v, text, extra = '') => {
+        const on = a.days.includes(v);
+        return el('button', {
+          class: `day-chip${on ? ' on' : ''}${extra}`, type: 'button', text,
+          'aria-pressed': String(on), 'aria-label': v === 'last' ? 'さいごの 日' : `${v}日`,
+          onclick: () => toggleDay(v),
+        });
+      };
+      const chips = [];
+      for (let i = 1; i <= 31; i++) chips.push(chip(i, String(i)));
+      chips.push(chip('last', 'さいごの 日(月まつ)', ' wide'));
+      detail = el('div', {},
+        el('p', { class: 'picked', text: `えらんだ 日: ${a.days.length ? sortDays(a.days).map(dayLabel).join('・') : 'まだ ないよ'}` }),
+        el('div', { class: 'day-picker' }, chips),
+        el('p', { class: 'note', style: 'margin:0', text: 'いくつでも えらべます。もういちど おすと はずれます。31日など ない 月は、その 月の さいごの 日に なります。' }),
+      );
     } else if (a.type === 'weekly') {
-      detail = select(WEEKDAYS.map((w, i) => [String(i), `${w}よう日`]), a.weekday, 'なんよう日', (v) => setA({ weekday: Number(v) }));
+      detail = el('div', { class: 'p-row' },
+        select(WEEKDAYS.map((w, i) => [String(i), `${w}よう日`]), a.weekday, 'なんよう日', (v) => setA({ weekday: Number(v) })));
     }
 
     return el('div', { class: 'p-child', style: '--c:#e3b23c' },
       el('h2', { text: '💰 おこづかいの 日' }),
       el('p', { class: 'note', text: 'きめた 日は、子どもの「きろく」の カレンダーに 💰 が 出ます(ふたり きょうつう)。' }),
-      el('div', { class: 'p-row' }, typeSel, detail),
-      a.type === 'monthly' && a.day !== 'last' && Number(a.day) >= 29
-        ? el('p', { class: 'note', text: `${a.day}日が ない 月は、その 月の さいごの 日に なります。` })
-        : null,
+      el('div', { class: 'p-row' }, typeSel),
+      detail,
     );
   }
+  const sortDays = (days) => [...days].sort((x, y) => (x === 'last' ? 99 : x) - (y === 'last' ? 99 : y));
+  const dayLabel = (v) => (v === 'last' ? '月まつ' : `${v}日`);
+
   function moveBtn(label, disabled, fn) {
     const b = el('button', { class: 'small-btn', type: 'button', text: label, 'aria-label': label === '▲' ? '上へ' : '下へ', onclick: fn });
     b.disabled = disabled;
     return b;
-  }
-  function moveTask(childId, taskId, dir) {
-    editChild(childId, (c) => {
-      const i = c.tasks.findIndex((t) => t.id === taskId);
-      const j = i + dir;
-      if (i < 0 || j < 0 || j >= c.tasks.length) return;
-      [c.tasks[i], c.tasks[j]] = [c.tasks[j], c.tasks[i]];
-    });
-    renderParent();
   }
 
   $('btn-clear-log').addEventListener('click', () => {
@@ -525,6 +624,7 @@
   setInterval(() => { if (dateKey() !== shownDate) refresh(); }, 30 * 1000);
 
   // はじめて ひらいたときは 最初のデータを保存しておく(保存できなくても 画面は出す)
-  if (!loadStored()) save();
+  // (まえの 形の データを 読んだときも、いまの 形で 保存しなおす)
+  save();
   show('home');
 })();

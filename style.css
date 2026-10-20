@@ -156,6 +156,25 @@ main {
   box-shadow: var(--shadow);
 }
 
+/* やることの グループ見出し(ふたりの / その子の) */
+.group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 10px;
+  font-size: 1.05rem;
+  font-weight: bold;
+}
+.group-title:first-child { margin-top: 4px; }
+.group-title .pill {
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+.group-title.mine .pill { background: var(--child-color); color: #fff; }
+.group-title .line { flex: 1; border-top: 3px dotted #f1d9a4; }
+
 /* やることボタン */
 .task-list {
   display: grid;
@@ -316,6 +335,26 @@ button.cal-cell { cursor: pointer; }
   border-top: 8px solid var(--c, var(--main));
 }
 .p-child h2 { margin: 0 0 10px; font-size: 1.2rem; }
+.p-child h4 { margin: 14px 0 0; font-size: 1rem; }
+
+/* おこづかいの 日: 日にちボタン */
+.day-picker {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin: 8px 0 10px;
+}
+.day-chip {
+  height: 46px;
+  border: 2px solid #e6d3ae;
+  border-radius: 12px;
+  background: #fffdf7;
+  font-weight: bold;
+  font-size: 1rem;
+}
+.day-chip.on { background: #e3b23c; border-color: #c9971f; color: #fff; }
+.day-chip.wide { grid-column: span 4; font-size: 0.9rem; }
+.picked { font-weight: bold; margin: 0 0 6px; }
 .p-row {
   display: flex;
   flex-wrap: wrap;
@@ -461,6 +500,9 @@ button.cal-cell { cursor: pointer; }
   .calendar { gap: 2px; padding: 6px; }
   .cal-cell { min-height: 54px; border-radius: 8px; font-size: 0.9rem; }
   .cal-pt { font-size: 0.7rem; }
+  .day-chip { height: 40px; }
+  .p-task { flex-wrap: wrap; }
+  .p-task .inp-name { flex: 1 1 calc(100% - 80px); }
 }
 @media (min-width: 900px) {
   .task-list { grid-template-columns: repeat(3, 1fr); }
