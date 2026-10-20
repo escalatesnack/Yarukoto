@@ -51,11 +51,17 @@
       </div>
 
       <div id="tab-history" class="tab-panel" hidden>
-        <div class="week-summary">
-          <span>この 7にちで</span>
-          <b id="points-week">0</b><span>てん</span>
+        <div class="month-nav">
+          <button id="month-prev" class="icon-btn" type="button" aria-label="まえの つき">◀</button>
+          <div class="month-title">
+            <div id="month-label"></div>
+            <div class="month-sum"><b id="points-month">0</b>てん</div>
+          </div>
+          <button id="month-next" class="icon-btn" type="button" aria-label="つぎの つき">▶</button>
         </div>
-        <div id="history-chart" class="history-chart" aria-label="この7にちのポイント"></div>
+        <p id="allowance-next" class="allowance-next" hidden></p>
+        <div id="calendar" class="calendar" aria-label="カレンダー"></div>
+        <p class="cal-legend">⭐ = やることが できた ひ　💰 = おこづかいの ひ</p>
         <div id="history-list" class="history-list"></div>
       </div>
     </section>

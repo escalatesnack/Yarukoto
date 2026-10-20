@@ -90,8 +90,8 @@
   const $ = (id) => document.getElementById(id);
   const screens = { home: $('screen-home'), child: $('screen-child'), parent: $('screen-parent') };
   let currentChildId = null;
-  const HISTORY_PAGE = 30; // きろくを 一度に 何日ぶん 出すか
-  let historyLimit = HISTORY_PAGE;
+  let calMonth = new Date(); // カレンダーに出している つき(1日)
+  calMonth.setDate(1);
   let shownDate = dateKey(); // 画面に出している日付
 
   function show(name) {
@@ -146,7 +146,7 @@
   // ===== こどもの画面 =====
   function openChild(id) {
     currentChildId = id;
-    historyLimit = HISTORY_PAGE;
+    calMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const c = findChild(id);
     if (!c) return show('home');
     show('child');
@@ -238,53 +238,111 @@
     celebrate.timer = setTimeout(() => (box.hidden = true), 1300);
   }
 
-  // ===== きろく =====
+  // ===== おこづかいの ひ =====
+  // allowance: { type: 'none' | 'monthly' | 'weekly', day: 1〜28 か 'last'(月の さいごの日), weekday: 0〜6 }
+  const allowance = () => ({ type: 'none', day: 25, weekday: 6, ...(data.allowance || {}) });
+
+  function isAllowanceDay(d) {
+    const a = allowance();
+    if (a.type === 'weekly') return d.getDay() === Number(a.weekday);
+    if (a.type === 'monthly') {
+      // その日が ない つき(2がつ30にち など)は、その つきの さいごの ひ にする
+      const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      const target = a.day === 'last' ? lastDay : Math.min(Number(a.day), lastDay);
+      return d.getDate() === target;
+    }
+    return false;
+  }
+
+  // きょうから いちばん ちかい おこづかいの ひ(なければ null)
+  function nextAllowanceDay() {
+    const d = new Date(); d.setHours(0, 0, 0, 0);
+    for (let i = 0; i < 62; i++) {
+      if (isAllowanceDay(d)) return { date: new Date(d), inDays: i };
+      d.setDate(d.getDate() + 1);
+    }
+    return null;
+  }
+
+  // ===== きろく(つきごとの カレンダー) =====
   function renderHistory(c) {
     const log = childLog(c.id);
     const byDate = {};
     log.forEach((l) => (byDate[l.date] ||= []).push(l));
 
-    // この7にちの グラフ
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      days.push(d);
-    }
-    const pts = days.map((d) => sumPts(byDate[dateKey(d)] || []));
-    const max = Math.max(1, ...pts);
-    $('points-week').textContent = pts.reduce((a, b) => a + b, 0);
-    const chart = $('history-chart');
-    chart.replaceChildren();
-    days.forEach((d, i) => {
-      chart.append(el('div', { class: 'bar-col' + (i === 6 ? ' is-today' : '') },
-        el('span', { class: 'bar-val', text: pts[i] || '' }),
-        el('div', { class: 'bar', style: `height:${(pts[i] / max) * 110}px` }),
-        el('span', { class: 'bar-day', text: i === 6 ? 'きょう' : WEEKDAYS[d.getDay()] }),
-      ));
-    });
+    const y = calMonth.getFullYear();
+    const m = calMonth.getMonth();
+    const now = new Date();
+    const isThisMonth = y === now.getFullYear() && m === now.getMonth();
+    const monthPrefix = `${y}-${String(m + 1).padStart(2, '0')}-`;
+    const monthKeys = Object.keys(byDate).filter((k) => k.startsWith(monthPrefix)).sort().reverse();
 
-    // ひごとの リスト(あたらしい じゅん)
+    $('month-label').textContent = `${y}ねん ${m + 1}がつ`;
+    $('points-month').textContent = sumPts(monthKeys.flatMap((k) => byDate[k]));
+
+    // つぎの おこづかいの ひ
+    const next = nextAllowanceDay();
+    $('allowance-next').hidden = !next;
+    if (next) {
+      $('allowance-next').textContent = next.inDays === 0
+        ? '💰 きょうは おこづかいの ひ!'
+        : `💰 つぎの おこづかいの ひ: ${next.date.getMonth() + 1}がつ${next.date.getDate()}にち(あと ${next.inDays}にち)`;
+    }
+
+    // カレンダー
+    const cal = $('calendar');
+    cal.replaceChildren();
+    WEEKDAYS.forEach((w, i) => cal.append(el('div', { class: `cal-head wd-${i}`, text: w })));
+    const first = new Date(y, m, 1);
+    for (let i = 0; i < first.getDay(); i++) cal.append(el('div', { class: 'cal-cell is-blank' }));
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const todayKey = dateKey();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(y, m, day);
+      const k = dateKey(d);
+      const pts = byDate[k] ? sumPts(byDate[k]) : 0;
+      const cls = ['cal-cell', `wd-${d.getDay()}`];
+      if (k === todayKey) cls.push('is-today');
+      if (k > todayKey) cls.push('is-future');
+      if (byDate[k]) cls.push('has-done');
+      if (isAllowanceDay(d)) cls.push('is-allowance');
+      const label = `${m + 1}がつ${day}にち` + (byDate[k] ? ` ${pts}てん` : '') + (isAllowanceDay(d) ? ' おこづかいの ひ' : '');
+      const attrs = { class: cls.join(' '), 'aria-label': label };
+      if (byDate[k]) {
+        attrs.type = 'button';
+        attrs.onclick = () => document.getElementById(`day-${k}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      cal.append(el(byDate[k] ? 'button' : 'div', attrs,
+        el('span', { class: 'cal-day', text: day }),
+        isAllowanceDay(d) ? el('span', { class: 'cal-money', text: '💰' }) : null,
+        byDate[k] ? el('span', { class: 'cal-pt', text: `⭐${pts}` }) : null,
+      ));
+    }
+
+    // その つきの ひごとの リスト(あたらしい じゅん)
     const list = $('history-list');
     list.replaceChildren();
-    const keys = Object.keys(byDate).sort().reverse();
-    if (keys.length === 0) {
-      list.append(el('p', { class: 'empty', text: 'まだ きろくが ないよ。やることを がんばろう!' }));
+    if (monthKeys.length === 0) {
+      const isFuture = new Date(y, m, 1) > now;
+      list.append(el('p', { class: 'empty', text: isThisMonth ? 'こんげつは まだ きろくが ないよ。やることを がんばろう!'
+        : isFuture ? 'この つきは これからだよ' : 'この つきは きろくが ないよ' }));
       return;
     }
-    keys.slice(0, historyLimit).forEach((k) => {
+    monthKeys.forEach((k) => {
       const items = byDate[k];
-      list.append(el('div', { class: 'day-card' },
+      list.append(el('div', { class: 'day-card', id: `day-${k}` },
         el('h3', {}, labelOf(k), el('span', { text: `${sumPts(items)}てん` })),
         el('ul', {}, items.map((l) => el('li', { text: `${l.emoji} ${l.name}` }))),
       ));
     });
-    if (keys.length > historyLimit) {
-      list.append(el('button', { class: 'btn btn-add', type: 'button', text: `もっと まえを みる(あと ${keys.length - historyLimit}にち)`, onclick: () => {
-        historyLimit += HISTORY_PAGE;
-        renderHistory(findChild(currentChildId));
-      } }));
-    }
   }
+
+  function moveMonth(dir) {
+    calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + dir, 1);
+    renderHistory(findChild(currentChildId));
+  }
+  $('month-prev').addEventListener('click', () => moveMonth(-1));
+  $('month-next').addEventListener('click', () => moveMonth(1));
 
   function selectTab(name) {
     document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('is-active', b.dataset.tab === name));
@@ -382,6 +440,42 @@
         } }),
       ));
     });
+    box.append(allowanceSettings());
+  }
+
+  // おこづかいの ひ の 設定(ふたり きょうつう)
+  function allowanceSettings() {
+    const a = allowance();
+    const setA = (patch) => { update((d) => { d.allowance = { ...allowance(), ...patch }; }); renderParent(); };
+    const select = (options, value, label, onchange) => {
+      const s = el('select', { class: 'inp', 'aria-label': label, onchange: (e) => onchange(e.target.value) },
+        options.map(([v, t]) => el('option', { value: v, text: t })));
+      s.value = String(value);
+      return s;
+    };
+
+    const typeSel = select(
+      [['none', 'きめない'], ['monthly', 'まいつき'], ['weekly', 'まいしゅう']],
+      a.type, 'おこづかいの ひの きめかた', (v) => setA({ type: v }),
+    );
+    let detail = null;
+    if (a.type === 'monthly') {
+      const days = [];
+      for (let i = 1; i <= 31; i++) days.push([String(i), `${i}にち`]);
+      days.push(['last', 'さいごの ひ(つきまつ)']);
+      detail = select(days, a.day, 'なんにち', (v) => setA({ day: v === 'last' ? 'last' : Number(v) }));
+    } else if (a.type === 'weekly') {
+      detail = select(WEEKDAYS.map((w, i) => [String(i), `${w}ようび`]), a.weekday, 'なんようび', (v) => setA({ weekday: Number(v) }));
+    }
+
+    return el('div', { class: 'p-child', style: '--c:#e3b23c' },
+      el('h2', { text: '💰 おこづかいの ひ' }),
+      el('p', { class: 'note', text: 'きめた ひは、こどもの「きろく」の カレンダーに 💰 が でます(ふたり きょうつう)。' }),
+      el('div', { class: 'p-row' }, typeSel, detail),
+      a.type === 'monthly' && a.day !== 'last' && Number(a.day) >= 29
+        ? el('p', { class: 'note', text: `${a.day}にちが ない つきは、その つきの さいごの ひ に なります。` })
+        : null,
+    );
   }
   function moveBtn(label, disabled, fn) {
     const b = el('button', { class: 'small-btn', type: 'button', text: label, 'aria-label': label === '▲' ? 'うえへ' : 'したへ', onclick: fn });

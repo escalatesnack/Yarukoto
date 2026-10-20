@@ -221,44 +221,68 @@ main {
 }
 
 /* ===== きろく ===== */
-.week-summary {
+.month-nav {
   display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 6px;
-  font-size: 1.1rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
-.week-summary b { font-size: 2.2rem; color: var(--child-color); }
+.month-title { text-align: center; font-weight: bold; font-size: 1.2rem; }
+.month-sum { font-size: 1rem; }
+.month-sum b { font-size: 2rem; color: var(--child-color); margin-right: 2px; }
 
-.history-chart {
+.allowance-next {
+  margin: 10px 0 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #fff1c2;
+  text-align: center;
+  font-weight: bold;
+}
+
+.calendar {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  align-items: end;
-  gap: 8px;
-  height: 180px;
-  margin: 10px 0 20px;
-  padding: 12px 10px 0;
+  gap: 4px;
+  margin: 12px 0 6px;
+  padding: 10px;
   border-radius: var(--radius);
   background: var(--card);
   box-shadow: var(--shadow);
 }
-.bar-col {
+.cal-head {
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--sub);
+  padding-bottom: 4px;
+}
+.cal-head.wd-0, .cal-cell.wd-0 .cal-day { color: #d9534f; }
+.cal-head.wd-6, .cal-cell.wd-6 .cal-day { color: #3d7bd9; }
+.cal-cell {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  height: 100%;
+  justify-content: flex-start;
+  gap: 1px;
+  min-height: 62px;
+  padding: 4px 2px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: #fffaf0;
+  font-size: 1rem;
 }
-.bar-val { font-size: 0.85rem; font-weight: bold; }
-.bar {
-  width: 70%;
-  max-width: 44px;
-  min-height: 4px;
-  border-radius: 10px 10px 0 0;
-  background: var(--child-color);
-}
-.bar-col.is-today .bar-day { font-weight: bold; color: var(--text); }
-.bar-day { font-size: 0.8rem; color: var(--sub); padding: 4px 0 8px; }
+button.cal-cell { cursor: pointer; }
+.cal-cell.is-blank { background: transparent; }
+.cal-cell.is-future { opacity: 0.55; }
+.cal-cell.has-done { background: #eafbe9; }
+.cal-cell.is-allowance { background: #fff1c2; border-color: #e3b23c; opacity: 1; }
+.cal-cell.is-today { border-color: var(--child-color); border-width: 3px; }
+.cal-day { font-weight: bold; line-height: 1.2; }
+.cal-money { font-size: 1.1rem; line-height: 1; }
+.cal-pt { font-size: 0.8rem; font-weight: bold; color: #2f8a46; white-space: nowrap; }
+.cal-legend { margin: 0 0 16px; text-align: center; font-size: 0.85rem; color: var(--sub); }
 
 .history-list { display: grid; gap: 12px; }
 .day-card {
@@ -434,6 +458,9 @@ main {
   .child-card .text { text-align: left; }
   .child-head { padding: 12px; }
   .child-face { font-size: 3.2rem; }
+  .calendar { gap: 2px; padding: 6px; }
+  .cal-cell { min-height: 54px; border-radius: 8px; font-size: 0.9rem; }
+  .cal-pt { font-size: 0.7rem; }
 }
 @media (min-width: 900px) {
   .task-list { grid-template-columns: repeat(3, 1fr); }
