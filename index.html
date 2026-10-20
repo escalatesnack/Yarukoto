@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#fff4d6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>やることリスト</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="topbar">
+    <button id="btn-back" class="icon-btn" type="button" aria-label="もどる" hidden>⬅️</button>
+    <h1 id="title" class="title">やることリスト</h1>
+    <button id="btn-parent" class="parent-btn" type="button">おうちのひと</button>
+  </header>
+
+  <!-- 保存できないときの おしらせ -->
+  <p id="save-warning" class="save-warning" role="alert" hidden>
+    ⚠️ この ブラウザでは きろくを ほぞん できていません。ページを とじると きえてしまいます。<br>
+    <small>(おうちのひとへ: プライベートブラウズを やめるか、ブラウザの 設定で サイトデータの 保存を ゆるしてください)</small>
+  </p>
+
+  <main id="app">
+    <!-- 1. だれがつかう? -->
+    <section id="screen-home" class="screen">
+      <p class="lead">だれが つかう?</p>
+      <div id="child-cards" class="child-cards"></div>
+    </section>
+
+    <!-- 2. こどもの やること -->
+    <section id="screen-child" class="screen" hidden>
+      <div class="child-head">
+        <div id="child-face" class="child-face"></div>
+        <div class="child-points">
+          <div class="points-label">きょうの ポイント</div>
+          <div class="points-today"><span id="points-today">0</span><small>てん</small></div>
+          <div class="points-total">ぜんぶで <b id="points-total">0</b> てん</div>
+        </div>
+      </div>
+
+      <div class="tabs" role="tablist">
+        <button class="tab is-active" type="button" data-tab="todo" role="tab">✅ やること</button>
+        <button class="tab" type="button" data-tab="history" role="tab">📖 きろく</button>
+      </div>
+
+      <div id="tab-todo" class="tab-panel">
+        <div id="task-list" class="task-list"></div>
+        <p id="all-done" class="all-done" hidden>🎉 ぜんぶ できたね! すごい! 🎉</p>
+      </div>
+
+      <div id="tab-history" class="tab-panel" hidden>
+        <div class="week-summary">
+          <span>この 7にちで</span>
+          <b id="points-week">0</b><span>てん</span>
+        </div>
+        <div id="history-chart" class="history-chart" aria-label="この7にちのポイント"></div>
+        <div id="history-list" class="history-list"></div>
+      </div>
+    </section>
+
+    <!-- 3. おうちのひと(設定) -->
+    <section id="screen-parent" class="screen" hidden>
+      <div id="parent-settings"></div>
+      <div class="danger-zone">
+        <h3>データの けす</h3>
+        <p class="note">きろくだけを消すと、ポイントが 0 にもどります。やることの設定はのこります。</p>
+        <button id="btn-clear-log" class="btn btn-danger" type="button">きろくを ぜんぶ けす</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- おうちのひと確認(かんたんな計算) -->
+  <dialog id="gate-dialog" class="dialog">
+    <form method="dialog" id="gate-form">
+      <h2>おうちのひと 用</h2>
+      <p>こたえを いれてください</p>
+      <p class="gate-q" id="gate-q"></p>
+      <input id="gate-a" type="number" inputmode="numeric" autocomplete="off" required>
+      <p id="gate-err" class="gate-err" hidden>ちがうよ</p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-sub" id="gate-cancel">やめる</button>
+        <button type="submit" class="btn btn-main">ひらく</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- できた!演出 -->
+  <div id="celebrate" class="celebrate" aria-live="polite" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
