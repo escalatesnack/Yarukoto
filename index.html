@@ -13,13 +13,13 @@
   <header class="topbar">
     <button id="btn-back" class="icon-btn" type="button" aria-label="もどる" hidden>⬅️</button>
     <h1 id="title" class="title">やることリスト</h1>
-    <button id="btn-parent" class="parent-btn" type="button">おうちのひと</button>
+    <button id="btn-parent" class="parent-btn" type="button">おうちの人</button>
   </header>
 
   <!-- 保存できないときの おしらせ -->
   <p id="save-warning" class="save-warning" role="alert" hidden>
     ⚠️ この ブラウザでは きろくを ほぞん できていません。ページを とじると きえてしまいます。<br>
-    <small>(おうちのひとへ: プライベートブラウズを やめるか、ブラウザの 設定で サイトデータの 保存を ゆるしてください)</small>
+    <small>(おうちの人へ: プライベートブラウズを やめるか、ブラウザの 設定で サイトデータの 保存を ゆるしてください)</small>
   </p>
 
   <main id="app">
@@ -80,8 +80,8 @@
   <!-- おうちのひと確認(かんたんな計算) -->
   <dialog id="gate-dialog" class="dialog">
     <form method="dialog" id="gate-form">
-      <h2>おうちのひと 用</h2>
-      <p>こたえを いれてください</p>
+      <h2>おうちの人 用</h2>
+      <p>こたえを 入れてください</p>
       <p class="gate-q" id="gate-q"></p>
       <input id="gate-a" type="number" inputmode="numeric" autocomplete="off" required>
       <p id="gate-err" class="gate-err" hidden>ちがうよ</p>

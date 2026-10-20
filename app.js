@@ -3,7 +3,7 @@
   'use strict';
 
   const STORAGE_KEY = 'yarukoto-data-v1';
-  const WEEKDAYS = ['日', '月', 'か', 'すい', 'もく', 'きん', 'ど'];
+  const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
   // ===== データ =====
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -103,7 +103,7 @@
       document.documentElement.style.setProperty('--child-color', '#ff8a3d');
       renderHome();
     } else if (name === 'parent') {
-      $('title').textContent = 'おうちのひと 設定';
+      $('title').textContent = 'おうちの人 設定';
       renderParent();
     }
     window.scrollTo(0, 0);
@@ -170,7 +170,7 @@
     const list = $('task-list');
     list.replaceChildren();
     if (c.tasks.length === 0) {
-      list.append(el('p', { class: 'empty', text: 'やることが まだ ないよ。おうちのひとに いれてもらおう!' }));
+      list.append(el('p', { class: 'empty', text: 'やることが まだ ないよ。おうちの人に 入れてもらおう!' }));
     }
     c.tasks.forEach((t) => {
       const done = todayLog.some((l) => l.taskId === t.id);
@@ -277,7 +277,7 @@
     const monthPrefix = `${y}-${String(m + 1).padStart(2, '0')}-`;
     const monthKeys = Object.keys(byDate).filter((k) => k.startsWith(monthPrefix)).sort().reverse();
 
-    $('month-label').textContent = `${y}ねん ${m + 1}月`;
+    $('month-label').textContent = `${y}年 ${m + 1}月`;
     $('points-month').textContent = sumPts(monthKeys.flatMap((k) => byDate[k]));
 
     // つぎの おこづかいの ひ
@@ -391,11 +391,11 @@
       const tasksBox = el('div', { class: 'p-tasks' });
       c.tasks.forEach((t, ti) => {
         tasksBox.append(el('div', { class: 'p-task' },
-          el('input', { class: 'inp inp-emoji', value: t.emoji, 'aria-label': 'えもじ', onchange: (e) => {
+          el('input', { class: 'inp inp-emoji', value: t.emoji, 'aria-label': 'え文字', onchange: (e) => {
             const v = e.target.value.trim() || '⭐';
             editTask(c.id, t.id, (x) => { x.emoji = v; });
           } }),
-          el('input', { class: 'inp inp-name', value: t.name, 'aria-label': 'やることの なまえ', onchange: (e) => {
+          el('input', { class: 'inp inp-name', value: t.name, 'aria-label': 'やることの 名まえ', onchange: (e) => {
             const v = e.target.value.trim() || 'やること';
             editTask(c.id, t.id, (x) => { x.name = v; });
           } }),
@@ -416,14 +416,14 @@
       });
 
       box.append(el('div', { class: 'p-child', style: `--c:${c.color}` },
-        el('h2', { text: `${ci + 1}にんめ` }),
+        el('h2', { text: `${ci + 1}人め` }),
         el('div', { class: 'p-row' },
-          el('input', { class: 'inp inp-emoji', value: c.emoji, 'aria-label': 'えもじ', onchange: (e) => {
+          el('input', { class: 'inp inp-emoji', value: c.emoji, 'aria-label': 'え文字', onchange: (e) => {
             const v = e.target.value.trim() || '🙂';
             editChild(c.id, (x) => { x.emoji = v; });
           } }),
-          el('input', { class: 'inp inp-name', value: c.name, 'aria-label': 'なまえ', onchange: (e) => {
-            const v = e.target.value.trim() || `${ci + 1}にんめ`;
+          el('input', { class: 'inp inp-name', value: c.name, 'aria-label': '名まえ', onchange: (e) => {
+            const v = e.target.value.trim() || `${ci + 1}人め`;
             editChild(c.id, (x) => { x.name = v; });
           } }),
           el('input', { class: 'inp-color', type: 'color', value: c.color, 'aria-label': 'いろ', onchange: (e) => {
@@ -432,7 +432,7 @@
             renderParent();
           } }),
         ),
-        el('p', { class: 'note', text: 'やること(えもじ・なまえ・ポイント)' }),
+        el('p', { class: 'note', text: 'やること(え文字・名まえ・ポイント)' }),
         tasksBox,
         el('button', { class: 'btn btn-add', type: 'button', text: '+ やることを ふやす', onclick: () => {
           editChild(c.id, (x) => { x.tasks.push({ id: uid(), emoji: '⭐', name: 'あたらしい やること', points: 1 }); });
@@ -465,12 +465,12 @@
       days.push(['last', 'さいごの 日(月まつ)']);
       detail = select(days, a.day, 'なん日', (v) => setA({ day: v === 'last' ? 'last' : Number(v) }));
     } else if (a.type === 'weekly') {
-      detail = select(WEEKDAYS.map((w, i) => [String(i), `${w}ようび`]), a.weekday, 'なんようび', (v) => setA({ weekday: Number(v) }));
+      detail = select(WEEKDAYS.map((w, i) => [String(i), `${w}よう日`]), a.weekday, 'なんよう日', (v) => setA({ weekday: Number(v) }));
     }
 
     return el('div', { class: 'p-child', style: '--c:#e3b23c' },
       el('h2', { text: '💰 おこづかいの 日' }),
-      el('p', { class: 'note', text: 'きめた ひは、こどもの「きろく」の カレンダーに 💰 が でます(ふたり きょうつう)。' }),
+      el('p', { class: 'note', text: 'きめた 日は、子どもの「きろく」の カレンダーに 💰 が 出ます(ふたり きょうつう)。' }),
       el('div', { class: 'p-row' }, typeSel, detail),
       a.type === 'monthly' && a.day !== 'last' && Number(a.day) >= 29
         ? el('p', { class: 'note', text: `${a.day}日が ない 月は、その 月の さいごの 日に なります。` })
@@ -478,7 +478,7 @@
     );
   }
   function moveBtn(label, disabled, fn) {
-    const b = el('button', { class: 'small-btn', type: 'button', text: label, 'aria-label': label === '▲' ? 'うえへ' : 'したへ', onclick: fn });
+    const b = el('button', { class: 'small-btn', type: 'button', text: label, 'aria-label': label === '▲' ? '上へ' : '下へ', onclick: fn });
     b.disabled = disabled;
     return b;
   }
@@ -493,7 +493,7 @@
   }
 
   $('btn-clear-log').addEventListener('click', () => {
-    if (!confirm('ほんとうに きろくを ぜんぶ けしますか?もとに もどせません。')) return;
+    if (!confirm('本とうに きろくを ぜんぶ けしますか?もとに もどせません。')) return;
     update((d) => { d.log = []; });
     alert('きろくを けしました');
   });
