@@ -27,7 +27,7 @@ html, body {
   -webkit-text-size-adjust: 100%;
 }
 
-button { font: inherit; color: inherit; cursor: pointer; }
+button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
 input, select { font: inherit; }
 [hidden] { display: none !important; }
 

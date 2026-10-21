@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- やることリストの アイコン(ホーム画面用) -->
+  <rect width="512" height="512" fill="#ff8a3d"/>
+  <rect x="86" y="70" width="340" height="372" rx="40" fill="#ffffff"/>
+  <!-- できた(みどりの まる + チェック) -->
+  <circle cx="150" cy="146" r="34" fill="#4cc06a"/>
+  <path d="M130 146 l14 14 l27 -29" fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="206" y="133" width="174" height="26" rx="13" fill="#c8ebcd"/>
+  <circle cx="150" cy="256" r="34" fill="#4cc06a"/>
+  <path d="M130 256 l14 14 l27 -29" fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="206" y="243" width="174" height="26" rx="13" fill="#c8ebcd"/>
+  <!-- まだ(からの まる) -->
+  <circle cx="150" cy="366" r="30" fill="none" stroke="#f0dfc0" stroke-width="9"/>
+  <rect x="206" y="353" width="124" height="26" rx="13" fill="#f0dfc0"/>
+  <!-- ほし -->
+  <path d="M398 318 l22 46 l50 6 l-37 34 l10 50 l-45 -25 l-45 25 l10 -50 l-37 -34 l50 -6 z" fill="#ffcd3c" stroke="#fff" stroke-width="8" stroke-linejoin="round"/>
+</svg>

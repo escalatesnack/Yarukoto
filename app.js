@@ -532,6 +532,15 @@
       ));
     });
     box.append(allowanceSettings());
+
+    // まだ ホーム画面に 置いていない ときだけ、置きかたを 出す(おうちの人 向け)
+    const standalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+    if (!standalone) {
+      box.append(el('div', { class: 'p-child', style: '--c:#8a7a6a' },
+        el('h2', { text: '📲 ホーム画面に 置く' }),
+        el('p', { class: 'note', text: 'iPhone・iPad の Safari で、下(iPad は上)の 共有ボタン □↑ →「ホーム画面に追加」を押すと、アプリのように全画面で開けます。ホーム画面から使うと、記録が消されにくくなります。' }),
+      ));
+    }
   }
 
   // おこづかいの 日 の 設定(ふたり きょうつう)
@@ -627,4 +636,26 @@
   // (まえの 形の データを 読んだときも、いまの 形で 保存しなおす)
   save();
   show('home');
+
+  // ===== ホーム画面アプリ用 =====
+  // iPhone・iPad の ホーム画面アイコンは PNG が ひつようなので、icon.svg を 180×180 の 絵に して 入れる
+  (function makeTouchIcon() {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const cv = document.createElement('canvas');
+        cv.width = cv.height = 180;
+        cv.getContext('2d').drawImage(img, 0, 0, 180, 180);
+        $('touch-icon').href = cv.toDataURL('image/png');
+      } catch (e) {
+        console.warn('アイコンを つくれませんでした', e);
+      }
+    };
+    img.src = 'icon.svg';
+  })();
+
+  // ネットが つながらなくても ひらけるように(http/https で ひらいたときだけ)
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('sw.js').catch((e) => console.warn('オフライン用の 登録に しっぱい', e));
+  }
 })();

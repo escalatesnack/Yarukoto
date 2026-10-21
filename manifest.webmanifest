@@ -1,0 +1,13 @@
+{
+  "name": "やることリスト",
+  "short_name": "やること",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fff4d6",
+  "theme_color": "#fff4d6",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

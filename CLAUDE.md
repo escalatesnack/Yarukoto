@@ -14,6 +14,11 @@
   - `index.html` — 入口。3画面(だれがつかう? / こどものやること・きろく / おうちのひと設定)を `<section>` で持ち、`hidden` で切りかえ
   - `style.css` — 見た目。スマホ(〜480px)・iPad・PC(900px〜)の幅に合わせて調整
   - `app.js` — 動き全部。即時関数1つの中にまとめている
+  - `manifest.webmanifest` / `icon.svg` / `sw.js` — ホーム画面アプリ用(全画面表示・アイコン・オフライン)
+    - iOS のホーム画面アイコンは PNG が要るので、app.js が起動時に icon.svg を canvas で 180px の PNG にして `#touch-icon` に入れる(PNG ファイルを作る手段が無かったため)
+    - `sw.js` はネット優先(つながらない時だけ保存した物を使う)。http/https で開いた時だけ登録。ファイルを増やしたら `FILES` に足す
+    - 保存場所(キャッシュ)の名前は `yarukoto:<scope>:v1`。github.io は他のアプリと同じドメインになるので、消す・読むのはこのアプリ(同じ scope)の物だけにする
+- 公開: GitHub Pages を想定(ファイルはすべて相対パスなので、どのURLの下に置いても動く)
 - データ保存: ブラウザの `localStorage`(キー `yarukoto-data-v1`)。端末・ブラウザごとに別々で、同期はしない
   - 形: `{ commonTasks: [{ id, emoji, name, points }], children: [{ id, name, emoji, color, tasks: [...] }], log: [{ childId, taskId, name, emoji, points, date: 'YYYY-MM-DD', at }], allowance }`
   - `commonTasks` = ふたり共通のやること、`children[].tasks` = その子だけのやること。子どもの画面では「👫 ふたりの やること」「〇〇の やること」の2グループで表示。共通のやることも「できた」は子ごとに別々(log の childId で区別)
