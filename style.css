@@ -507,3 +507,10 @@ button.cal-cell { cursor: pointer; }
 @media (min-width: 900px) {
   .task-list { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ほかの 端末に うつす */
+.transfer-out { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.transfer-out:empty { display: none; }
+.qr-box { align-self: center; background: #fff; padding: 12px; border-radius: 12px; }
+.qr-box img, .qr-box canvas { display: block; }
+.paste-box { flex: 1; min-width: 0; resize: vertical; font-size: 0.9rem; }

@@ -532,6 +532,7 @@
       ));
     });
     box.append(allowanceSettings());
+    box.append(transferSettings());
 
     // まだ ホーム画面に 置いていない ときだけ、置きかたを 出す(おうちの人 向け)
     const standalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
@@ -591,6 +592,108 @@
       detail,
     );
   }
+  // ===== ほかの 端末に うつす =====
+  // データを gzip で 小さくして、リンク(#import=...)に のせる。QRコードで iPad などに わたせる
+  const PUBLIC_URL = 'https://escalatesnack.github.io/Yarukoto/';
+  const QR_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+  function bytesToB64url(bytes) {
+    let s = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function b64urlToBytes(t) {
+    t = t.replace(/-/g, '+').replace(/_/g, '/');
+    while (t.length % 4) t += '=';
+    const s = atob(t);
+    const b = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i);
+    return b;
+  }
+  const pipe = async (bytes, stream) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
+  async function packData(d) {
+    const json = new TextEncoder().encode(JSON.stringify(d));
+    if ('CompressionStream' in window) return 'z' + bytesToB64url(await pipe(json, new CompressionStream('gzip')));
+    return 'j' + bytesToB64url(json);
+  }
+  async function unpackData(code) {
+    let bytes = b64urlToBytes(code.slice(1));
+    if (code[0] === 'z') {
+      if (!('DecompressionStream' in window)) throw new Error('この ブラウザでは 読みこめません。ブラウザを 新しく してください');
+      bytes = await pipe(bytes, new DecompressionStream('gzip'));
+    } else if (code[0] !== 'j') {
+      throw new Error('コードの 形が ちがいます');
+    }
+    const d = JSON.parse(new TextDecoder().decode(bytes));
+    if (!d || !Array.isArray(d.children) || !Array.isArray(d.log)) throw new Error('やることリストの データでは ありません');
+    return normalize(d);
+  }
+  const shareUrl = (code) => (location.hostname.endsWith('github.io') ? location.origin + location.pathname : PUBLIC_URL) + '#import=' + code;
+  const codeFromText = (t) => { const m = /#import=([A-Za-z0-9_-]+)/.exec(t); return m ? m[1] : t.trim(); };
+  async function importCode(code) {
+    const d = await unpackData(code);
+    const who = d.children.map((c) => c.name).join('・');
+    if (!confirm(`ほかの 端末の データ(${who}・きろく ${d.log.length}こ)を 読みこみますか?\nこの 端末の いまの データは 上書きされます。`)) return false;
+    data = d;
+    save();
+    return true;
+  }
+  function loadQrLib() {
+    if (window.QRCode) return Promise.resolve();
+    return new Promise((res, rej) => {
+      const sc = el('script', { src: QR_LIB });
+      sc.onload = res;
+      sc.onerror = () => rej(new Error('QRコードの 道具を 読みこめませんでした'));
+      document.head.append(sc);
+    });
+  }
+  function transferSettings() {
+    const out = el('div', { class: 'transfer-out' });
+    const make = el('button', { class: 'btn btn-main', type: 'button', text: 'この 端末の データを うつす', onclick: async () => {
+      make.disabled = true;
+      try {
+        const url = shareUrl(await packData(data));
+        const qr = el('div', { class: 'qr-box' });
+        const field = el('input', { class: 'inp', readonly: 'readonly', value: url, 'aria-label': 'うつす ための リンク', onclick: (e) => e.target.select() });
+        const copy = el('button', { class: 'btn', type: 'button', text: 'リンクを コピー', onclick: async () => {
+          try { await navigator.clipboard.writeText(url); copy.textContent = 'コピーしました'; } catch (e) { field.select(); }
+        } });
+        const share = navigator.share ? el('button', { class: 'btn', type: 'button', text: '共有(AirDrop など)', onclick: () => navigator.share({ title: 'やることリストの データ', url }).catch(() => {}) }) : null;
+        out.replaceChildren(
+          el('p', { class: 'note', text: 'うつしたい 端末(iPad など)の カメラで この QRコードを 読みとると、データが 読みこまれます。' }),
+          qr,
+          el('div', { class: 'p-row' }, field),
+          el('div', { class: 'p-row' }, copy, share),
+        );
+        if (url.length > 2300) {
+          qr.replaceWith(el('p', { class: 'note', text: 'きろくが 多くて QRコードに 入りきりません。リンクを コピーするか 共有して、うつしたい 端末で ひらいてください。' }));
+        } else {
+          await loadQrLib();
+          new window.QRCode(qr, { text: url, width: 240, height: 240, correctLevel: window.QRCode.CorrectLevel.L });
+        }
+      } catch (e) {
+        out.replaceChildren(el('p', { class: 'note', text: 'うつす じゅんびが できませんでした: ' + e.message }));
+      } finally {
+        make.disabled = false;
+      }
+    } });
+    const paste = el('textarea', { class: 'inp paste-box', rows: '2', placeholder: 'ほかの 端末で コピーした リンクを ここに はりつけ', 'aria-label': 'うつす ための リンク' });
+    const read = el('button', { class: 'btn', type: 'button', text: '読みこむ', onclick: async () => {
+      const code = codeFromText(paste.value);
+      if (!code) return;
+      try {
+        if (await importCode(code)) { alert('読みこみました'); show('home'); }
+      } catch (e) { alert('読みこめませんでした: ' + e.message); }
+    } });
+    return el('div', { class: 'p-child', style: '--c:#4aa3df' },
+      el('h2', { text: '📲 ほかの 端末に うつす' }),
+      el('p', { class: 'note', text: 'やることの 設定と きろくを、ほかの 端末(iPad など)に うつせます。うつした あとは、それぞれ べつべつに 記録されます(自動では そろいません)。' }),
+      make, out,
+      el('h4', { text: 'ほかの 端末から うけとる' }),
+      el('p', { class: 'note', text: 'ホーム画面に 置いた アプリで 使っている ときは、QRコードからだと べつの 場所に 入って しまうので、リンクを コピーして ここに はりつけて ください。' }),
+      el('div', { class: 'p-row' }, paste, read),
+    );
+  }
+
   const sortDays = (days) => [...days].sort((x, y) => (x === 'last' ? 99 : x) - (y === 'last' ? 99 : y));
   const dayLabel = (v) => (v === 'last' ? '月まつ' : `${v}日`);
 
@@ -634,8 +737,16 @@
 
   // はじめて ひらいたときは 最初のデータを保存しておく(保存できなくても 画面は出す)
   // (まえの 形の データを 読んだときも、いまの 形で 保存しなおす)
+  // QRコード・リンク(#import=...)から ひらかれたら、データを 読みこむ
+  const importHash = /#import=([A-Za-z0-9_-]+)/.exec(location.hash);
   save();
   show('home');
+  if (importHash) {
+    history.replaceState(null, '', location.pathname + location.search);
+    importCode(importHash[1])
+      .then((ok) => { if (ok) { show('home'); alert('読みこみました'); } })
+      .catch((e) => alert('読みこめませんでした: ' + e.message));
+  }
 
   // ===== ホーム画面アプリ用 =====
   // iPhone・iPad の ホーム画面アイコンは PNG が ひつようなので、icon.svg を 180×180 の 絵に して 入れる
